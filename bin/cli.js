@@ -2,6 +2,7 @@
 
 require('pretty-exceptions')
 const pad = require('pad-left')
+const isCI = require('is-ci')
 const Listr = require('listr')
 const pify = require('pify')
 const cosmiconfig = require('cosmiconfig')
@@ -17,9 +18,6 @@ const { getSize, version, moduleName } = require('../lib/utils')
 const {
   minifyCss,
 } = require('../lib/styles')
-
-const tick = () => new Promise(resolve => process.nextTick(resolve))
-const delay = delay => new Promise(resolve => setTimeout(resolve))
 
 const argv = yargs
     .command('*', 'bundle your lib', () => {}, argv => {
@@ -65,12 +63,34 @@ const argv = yargs
         alias: ['external'],
         array: true,
       })
+      .option('global', {
+        describe: 'declare global dependencies in the form of moduleId:global, ex: jquery:$',
+        alias: ['globals'],
+        array: true,
+        coerce (globals) {
+          return globals.reduce((o, global) => {
+            const [id, gl] = global.split(':')
+            o[id] = gl || id
+            return o
+          }, {})
+        },
+      })
+      .option('verbose', {
+        describe: 'Use a more verbose and static output. Activated by default on CI systems',
+        alias: 'v',
+        default: isCI,
+      })
       .help('h')
       .alias('h', 'help')
       .epilog('copyright 2017')
       .argv
 
 const basePlugins = {
+  replace: {
+    __VERSION__: version,
+    'process.env.NODE_ENV': '"development"',
+  },
+  flow: true,
   nodeResolve: {
     extensions: [ '.js', '.vue', '.jsx', '.json'],
   },
@@ -87,9 +107,6 @@ const basePlugins = {
       css,
     }
   },
-  replace: {
-    __VERSION__: version,
-  },
   buble: {
     jsx: 'h',
     objectAssign: 'Object.assign',
@@ -103,16 +120,10 @@ const basePlugins = {
 const DEFAULTS = {
   input: 'src/index.js',
   plugins: basePlugins,
+
+  // custom options
   file: ({ outdir, name, format, compress}) =>
     `${outdir}/${name}${format !== 'umd' ? '.' + format : ''}${compress ? '.min' : ''}.js`,
-  umd: {
-    plugins: {
-      replace: {
-        __VERSION__: version,
-        'process.env.NODE_ENV': '"development"',
-      },
-    },
-  },
   'umd.min': {
     plugins: {
       replace: {
@@ -125,34 +136,27 @@ const DEFAULTS = {
 
 function generateRunOpts(format, opts) {
   const {
-    input,
     outdir,
     compress,
     name,
-    moduleName,
     exports,
     plugins: basePlugins,
     file: baseFile,
   } = opts
   // TODO merge basePlugins
-  const formatOpts = opts[format] || {}
+  const formatOpts = opts[format + (compress ? '.min' : '')] || {}
   const { plugins } = formatOpts
   const file = formatOpts.file || baseFile
 
   return {
-    input,
+    ...opts,
     output: file({
       outdir,
       name,
       format,
       compress,
     }),
-    exports,
-    outdir,
-    moduleName,
-    name,
     format,
-    compress,
     plugins: Object.assign({}, basePlugins, plugins),
   }
 }
@@ -248,7 +252,7 @@ async function main () {
       ], { collapse: false }),
     },
   ], {
-    renderer: opts.v ? 'verbose' : 'auto',
+    renderer: opts.verbose ? 'verbose' : 'auto',
     collapse: false,
   })
 
@@ -265,16 +269,15 @@ async function handleError (err) {
     console.log(chalk.bold.red('\nIt looks like rollup found a SyntaxError'))
     await displayError(err)
   }
+  // Remove buble errors as we already displayed it
+  delete err.snippet
+  delete err.frame
   process.emit('uncaughtException', err)
 }
 
 async function displayError (err) {
   let src
-  try {
-    src = await pify(fs.readFile)(err.id)
-  } catch (e) {
-    console.log(e)
-  }
+  src = await pify(fs.readFile)(err.id)
   src = src.toString().split('\n')
   const start = Math.max(0, err.loc.line - 3)
   const end = Math.min(src.length, err.loc.line + 2)
