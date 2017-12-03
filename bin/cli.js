@@ -10,11 +10,11 @@ const kebabcase = require('lodash.kebabcase')
 const mkdirp = require('mkdirp')
 const yargs = require('yargs')
 const chalk = require('chalk')
-const run = require('../lib')
+const { run, runWatcher } = require('../lib')
 const { basename } = require('path')
 const fs = require('fs')
 const zlib = require('zlib')
-const { getSize, version, moduleName } = require('../lib/utils')
+const { getSize, version, moduleName, cwd } = require('../lib/utils')
 const {
   minifyCss,
 } = require('../lib/styles')
@@ -76,9 +76,19 @@ const argv = yargs
         },
       })
       .option('verbose', {
-        describe: 'Use a more verbose and static output. Activated by default on CI systems',
+        describe: 'use a more verbose and static output. Activated by default on CI systems',
         alias: 'v',
         default: isCI,
+      })
+      .option('watch', {
+        describe: 'launch rollup in watch mode',
+        alias: 'w',
+      })
+      .option('plugins', {
+        alias: ['p', 'plugin'],
+        describe: 'add plugins to the rollup config',
+        array: true,
+        default: [],
       })
       .help('h')
       .alias('h', 'help')
@@ -90,7 +100,7 @@ const basePlugins = {
     __VERSION__: version,
     'process.env.NODE_ENV': '"development"',
   },
-  flow: true,
+  flow: false,
   nodeResolve: {
     extensions: [ '.js', '.vue', '.jsx', '.json'],
   },
@@ -166,8 +176,14 @@ function generateTask (opts, { format, compress }) {
   return {
     title: `Waiting - ${runOpts.output}`,
     task: async (ctx, task) => {
-      task.title = `Bundling - ${runOpts.output}`
       // we pass down the context so we can get CSS and build it later
+      if (opts.watch) {
+        // rollup uses that option
+        delete runOpts.watch
+        task.title = `Watching - ${runOpts.output}`
+        return runWatcher({ ...runOpts, ctx })
+      }
+      task.title = `Bundling - ${runOpts.output}`
       const code = await run({ ...runOpts, ctx })
       task.title = `${runOpts.output} ${chalk.bold.magenta(getSize(code))}`
       if (compress) {
@@ -185,9 +201,18 @@ async function main () {
   // TODO check file exist
   // TODO merge plugins options
   // XXX cosmiconfig not working, I must be doing something wrong
-  const { config } = cosmiconfig('rollit', { sync: true }).load() || {}
+  const { config } = cosmiconfig('rollit', { sync: true }).load(cwd) || { config: {} }
   // console.log('config', config)
-  // console.log('argv', argv)
+  argv.plugins = Object.assign(
+    {},
+    DEFAULTS.plugins,
+    config.plugins,
+    argv.plugins.reduce((o, plugin) => {
+      o[plugin] = true
+      return o
+    }, {}),
+  )
+  // console.log('argv', argv.plugins)
   const opts = Object.assign({}, DEFAULTS, config, argv)
   opts.name = kebabcase(opts.moduleName)
 
@@ -226,7 +251,7 @@ async function main () {
             task.title = `Compiling - ${file}`
             // const css = compiledStyles.map(s => s.code.trim()).join('')
             // ctx.css = css
-            fs.writeFileSync(
+            await pify(fs.writeFile)(
               file,
               ctx.css.trim(),
             )
@@ -242,7 +267,7 @@ async function main () {
             task.title = `Minifying - ${file}`
             // TODO maps
             const { css } = await minifyCss(ctx.css)
-            fs.writeFileSync(
+            await pify(fs.writeFile)(
               file,
               css,
             )
@@ -293,6 +318,8 @@ async function displayError (err) {
             : chalk.white
       return lineNumberFn(pad(start + i, padding, ' ') + ':') + lineFn(s)
     })
+  // sometimes raisedAt is undefined
+  err.raisedAt = err.raisedAt || (err.pos + 1)
   src.splice(
     3, 0, Array(err.loc.column + 2 + padding).join(' ') +
       chalk.bold.red(Array(err.raisedAt - err.pos + 1).join('^'))
@@ -300,4 +327,4 @@ async function displayError (err) {
   console.log('\n' + src.join('\n') + '\n')
 }
 
-main()
+main().catch(handleError)

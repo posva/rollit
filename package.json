@@ -15,6 +15,12 @@
     "modern",
     "vue"
   ],
+  "files": [
+    "bin",
+    "lib",
+    "LICENSE",
+    "README.md"
+  ],
   "author": "posva",
   "license": "MIT",
   "dependencies": {
@@ -25,6 +31,7 @@
     "is-ci": "^1.0.10",
     "listr": "^0.13.0",
     "lodash.kebabcase": "^4.1.1",
+    "lodash.pick": "^4.4.0",
     "mkdirp": "^0.5.1",
     "pad-left": "^2.1.0",
     "pify": "^3.0.0",
@@ -45,6 +52,7 @@
     "vue": "^2.5.8",
     "vue-template-compiler": "^2.5.8",
     "yargs": "^10.0.3",
+    "zen-observable": "^0.6.0",
     "zlib": "^1.0.5"
   },
   "devDependencies": {
