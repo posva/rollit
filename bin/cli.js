@@ -84,6 +84,10 @@ const argv = yargs
         describe: 'launch rollup in watch mode',
         alias: 'w',
       })
+      .option('use-contributors', {
+        describe: 'use contributors instead of author field from package.json',
+        default: false,
+      })
       .option('plugins', {
         alias: ['p', 'plugin'],
         describe: 'add plugins to the rollup config',
