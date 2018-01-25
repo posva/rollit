@@ -38,6 +38,7 @@
     "postcss": "^6.0.14",
     "pretty-exceptions": "^1.2.0",
     "raso": "^1.1.1",
+    "read-pkg": "^3.0.0",
     "rollup": "^0.51.8",
     "rollup-plugin-alias": "^1.4.0",
     "rollup-plugin-buble": "^0.18.0",
@@ -51,6 +52,7 @@
     "uppercamelcase": "^3.0.0",
     "vue": "^2.5.8",
     "vue-template-compiler": "^2.5.8",
+    "write-pkg": "^3.1.0",
     "yargs": "^10.0.3",
     "zen-observable": "^0.6.0",
     "zlib": "^1.0.5"

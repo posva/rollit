@@ -2,6 +2,8 @@
 
 require('pretty-exceptions')
 const pad = require('pad-left')
+const writePkg = require('write-pkg')
+const readPkg = require('read-pkg')
 const isCI = require('is-ci')
 const Listr = require('listr')
 const pify = require('pify')
@@ -14,7 +16,7 @@ const { run, runWatcher } = require('../lib')
 const { basename } = require('path')
 const fs = require('fs')
 const zlib = require('zlib')
-const { getSize, version, moduleName, cwd } = require('../lib/utils')
+const { getSize, version, moduleName, cwd, packagePath } = require('../lib/utils')
 const {
   minifyCss,
 } = require('../lib/styles')
@@ -235,6 +237,35 @@ async function main () {
   )
 
   const tasks = new Listr([
+    {
+      title: 'Package.json',
+      task: async () => {
+        const packageData = await readPkg(packagePath)
+        const fields = {
+          main: 'cjs',
+          module: 'es',
+          unpkg: 'umd',
+          browser: 'umd',
+        }
+        // TODO move to function
+        const distFiles = opts.formats.map(format => ({ compress: false, format }))
+              .reduce((t, target) => {
+                t[target.format] = opts.file({
+                  ...target,
+                  name: opts.name,
+                  outdir: opts.outdir,
+                })
+                return t
+              }, {})
+        Object.keys(fields).forEach(field => {
+          packageData[field] = distFiles[fields[field]]
+        })
+        // not sure why there is that
+        delete packageData._id
+        delete packageData.readme
+        await writePkg(packagePath, packageData)
+      }
+    },
     {
       title: 'Bundle JS',
       task: () => jsTasks,
