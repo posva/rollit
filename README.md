@@ -6,6 +6,12 @@
 most vue libs but may not be enough for more complicated libs. Of course, feel
 free to open issues to request features and to report bugs 😄
 
+## Installation
+
+```sh
+npm i -g rollit
+```
+
 ## Usage
 
 ```sh
