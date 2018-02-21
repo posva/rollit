@@ -108,7 +108,7 @@ const basePlugins = {
   },
   flow: false,
   nodeResolve: {
-    extensions: [ '.js', '.vue', '.jsx', '.json'],
+    extensions: ['.js', '.vue', '.jsx', '.json'],
   },
   vue ({ format, name, outdir, compress, ctx }) {
     const css = ctx.isCssHandled ? false : function (css, styles) {
