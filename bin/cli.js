@@ -245,7 +245,7 @@ async function main () {
           main: 'cjs',
           module: 'es',
           unpkg: 'umd',
-          browser: 'umd',
+          browser: 'es',
         }
         // TODO move to function
         const distFiles = opts.formats.map(format => ({ compress: false, format }))
