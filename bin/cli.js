@@ -88,7 +88,7 @@ const argv = yargs
       })
       .option('use-contributors', {
         describe: 'use contributors instead of author field from package.json',
-        default: false,
+        default: true,
       })
       .option('plugins', {
         alias: ['p', 'plugin'],
