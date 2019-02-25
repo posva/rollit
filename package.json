@@ -1,6 +1,6 @@
 {
   "name": "rollit",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Bundle your modules using rollup",
   "main": "lib/index.js",
   "bin": "bin/cli.js",
